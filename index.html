@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Misinformation Detection & Evidence Verification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-section label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .verdict {
+            font-size: 1.5em;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: inline-block;
+        }
+
+        .verdict.misinformation {
+            background: #fee;
+            color: #c33;
+        }
+
+        .verdict.misleading {
+            background: #fef3e7;
+            color: #e67e22;
+        }
+
+        .verdict.uncertain {
+            background: #e8f4f8;
+            color: #3498db;
+        }
+
+        .verdict.true {
+            background: #efe;
+            color: #2ecc71;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s;
+        }
+
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .claims-list, .evidence-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .claims-list li, .evidence-list li {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .url-result {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .url-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .url-info h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .url-info p {
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .security-flags {
+            margin-top: 15px;
+        }
+
+        .security-flag {
+            display: inline-block;
+            padding: 5px 15px;
+            margin: 5px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .security-flag.warning {
+            background: #fef3e7;
+            color: #e67e22;
+        }
+
+        .security-flag.success {
+            background: #efe;
+            color: #2ecc71;
+        }
+
+        .security-flag.error {
+            background: #fee;
+            color: #c33;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .url-result {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                min-width: 120px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Misinformation Detection</h1>
+            <p>Analyze text and verify sources with local AI</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Checking Ollama connection...</span>
+            </div>
+            <div>
+                <small>Powered by Local LLM (Ollama)</small>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" data-tab="analyze">Analyze Text</button>
+                <button class="tab" data-tab="evidence">Extract Evidence</button>
+                <button class="tab" data-tab="url">Check URL</button>
+            </div>
+
+            <div class="tab-content active" id="analyze-tab">
+                <div class="input-section">
+                    <label for="analyzeText">Enter text to analyze for misinformation:</label>
+                    <textarea id="analyzeText" placeholder="Paste the text you want to analyze here..."></textarea>
+                </div>
+                <button class="btn" id="analyzeBtn" onclick="analyzeText()">Analyze Text</button>
+                <div class="error-message" id="analyzeError"></div>
+                <div class="results-section" id="analyzeResults">
+                    <div class="loading" id="analyzeLoading">Analyzing text</div>
+                    <div id="analyzeResultsContent"></div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="evidence-tab">
+                <div class="input-section">
+                    <label for="evidenceText">Enter text to extract evidence from:</label>
+                    <textarea id="evidenceText" placeholder="Paste the text you want to extract evidence from..."></textarea>
+                </div>
+                <button class="btn" id="evidenceBtn" onclick="extractEvidence()">Extract Evidence</button>
+                <div class="error-message" id="evidenceError"></div>
+                <div class="results-section" id="evidenceResults">
+                    <div class="loading" id="evidenceLoading">Extracting evidence</div>
+                    <div id="evidenceResultsContent"></div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="url-tab">
+                <div class="input-section">
+                    <label for="urlInput">Enter URL to check:</label>
+                    <input type="text" id="urlInput" placeholder="https://example.com/article">
+                </div>
+                <button class="btn" id="urlBtn" onclick="checkURL()">Check URL</button>
+                <div class="error-message" id="urlError"></div>
+                <div class="results-section" id="urlResults">
+                    <div class="loading" id="urlLoading">Checking URL</div>
+                    <div id="urlResultsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+
+        // Check Ollama status
+        async function checkOllamaStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                
+                if (data.ollama_available) {
+                    statusDot.classList.add('active');
+                    statusText.textContent = 'Ollama Connected';
+                } else {
+                    statusDot.classList.remove('active');
+                    statusText.textContent = 'Ollama Not Running - Start Ollama first';
+                }
+            } catch (error) {
+                document.getElementById('statusDot').classList.remove('active');
+                document.getElementById('statusText').textContent = 'Connection Error';
+            }
+        }
+
+        // Analyze text
+        async function analyzeText() {
+            const text = document.getElementById('analyzeText').value.trim();
+            if (!text) {
+                showError('analyzeError', 'Please enter some text to analyze');
+                return;
+            }
+
+            hideError('analyzeError');
+            showLoading('analyzeResults', 'analyzeLoading');
+            disableButton('analyzeBtn');
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Analysis failed');
+                }
+
+                hideLoading('analyzeResults', 'analyzeLoading');
+                displayAnalyzeResults(data);
+            } catch (error) {
+                hideLoading('analyzeResults', 'analyzeLoading');
+                showError('analyzeError', error.message);
+            } finally {
+                enableButton('analyzeBtn');
+            }
+        }
+
+        function displayAnalyzeResults(data) {
+            const result = data.result;
+            const content = document.getElementById('analyzeResultsContent');
+            
+            const verdictClass = result.verdict.toLowerCase().replace(' ', '-');
+            
+            content.innerHTML = `
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="verdict ${verdictClass}">${result.verdict}</span>
+                        <div style="text-align: right;">
+                            <div class="confidence-label">
+                                <span>Confidence</span>
+                                <span>${data.confidence}%</span>
+                            </div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${data.confidence}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p><strong>Reasoning:</strong> ${result.reasoning}</p>
+                    ${result.claims && result.claims.length > 0 ? `
+                        <h3 style="margin-top: 20px;">Key Claims Identified:</h3>
+                        <ul class="claims-list">
+                            ${result.claims.map(claim => `<li>${claim}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('analyzeResults').classList.add('show');
+        }
+
+        // Extract evidence
+        async function extractEvidence() {
+            const text = document.getElementById('evidenceText').value.trim();
+            if (!text) {
+                showError('evidenceError', 'Please enter some text to extract evidence from');
+                return;
+            }
+
+            hideError('evidenceError');
+            showLoading('evidenceResults', 'evidenceLoading');
+            disableButton('evidenceBtn');
+
+            try {
+                const response = await fetch('/api/extract-evidence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Evidence extraction failed');
+                }
+
+                hideLoading('evidenceResults', 'evidenceLoading');
+                displayEvidenceResults(data);
+            } catch (error) {
+                hideLoading('evidenceResults', 'evidenceLoading');
+                showError('evidenceError', error.message);
+            } finally {
+                enableButton('evidenceBtn');
+            }
+        }
+
+        function displayEvidenceResults(data) {
+            const result = data.result;
+            const content = document.getElementById('evidenceResultsContent');
+            
+            content.innerHTML = `
+                <div class="result-card">
+                    <div class="result-header">
+                        <h2>Evidence Extraction Results</h2>
+                        <div style="text-align: right;">
+                            <div class="confidence-label">
+                                <span>Verifiability Score</span>
+                                <span>${result.verifiability_score}%</span>
+                            </div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${result.verifiability_score}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${result.factual_statements && result.factual_statements.length > 0 ? `
+                        <h3>Factual Statements:</h3>
+                        <ul class="evidence-list">
+                            ${result.factual_statements.map(stmt => `<li>${stmt}</li>`).join('')}
+                        </ul>
+                    ` : '<p>No factual statements identified</p>'}
+                    
+                    ${result.sources_mentioned && result.sources_mentioned.length > 0 ? `
+                        <h3 style="margin-top: 20px;">Sources Mentioned:</h3>
+                        <ul class="evidence-list">
+                            ${result.sources_mentioned.map(source => `<li>${source}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    
+                    ${result.statistics && result.statistics.length > 0 ? `
+                        <h3 style="margin-top: 20px;">Statistics/Data Points:</h3>
+                        <ul class="evidence-list">
+                            ${result.statistics.map(stat => `<li>${stat}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    
+                    ${result.arguments && result.arguments.length > 0 ? `
+                        <h3 style="margin-top: 20px;">Arguments Presented:</h3>
+                        <ul class="evidence-list">
+                            ${result.arguments.map(arg => `<li>${arg}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('evidenceResults').classList.add('show');
+        }
+
+        // Check URL
+        async function checkURL() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                showError('urlError', 'Please enter a URL to check');
+                return;
+            }
+
+            hideError('urlError');
+            showLoading('urlResults', 'urlLoading');
+            disableButton('urlBtn');
+
+            try {
+                const response = await fetch('/api/check-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'URL check failed');
+                }
+
+                hideLoading('urlResults', 'urlLoading');
+                displayURLResults(data);
+            } catch (error) {
+                hideLoading('urlResults', 'urlLoading');
+                showError('urlError', error.message);
+            } finally {
+                enableButton('urlBtn');
+            }
+        }
+
+        function displayURLResults(data) {
+            const content = document.getElementById('urlResultsContent');
+            
+            const accessibilityClass = data.is_accessible ? 'success' : 'error';
+            const accessibilityText = data.is_accessible ? 'Accessible' : 'Not Accessible';
+            
+            content.innerHTML = `
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="verdict ${accessibilityClass}">${accessibilityText}</span>
+                        <div style="text-align: right;">
+                            <div class="confidence-label">
+                                <span>Credibility Score</span>
+                                <span>${data.credibility_score}%</span>
+                            </div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${data.credibility_score}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="url-result">
+                        <div class="url-info">
+                            <h3>Domain Information</h3>
+                            <p><strong>Domain:</strong> ${data.domain_info.domain || 'N/A'}</p>
+                            <p><strong>Protocol:</strong> ${data.domain_info.scheme || 'N/A'}</p>
+                            <p><strong>Path:</strong> ${data.domain_info.path || 'N/A'}</p>
+                        </div>
+                        <div class="url-info">
+                            <h3>Security Flags</h3>
+                            <div class="security-flags">
+                                ${data.security_flags.length > 0 
+                                    ? data.security_flags.map(flag => {
+                                        const flagClass = flag.includes('HTTPS') ? 'success' : 
+                                                          flag.includes('SUSPICIOUS') || flag.includes('ERROR') ? 'error' : 'warning';
+                                        return `<span class="security-flag ${flagClass}">${flag}</span>`;
+                                    }).join('')
+                                    : '<p>No security flags detected</p>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('urlResults').classList.add('show');
+        }
+
+        // Utility functions
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.classList.add('show');
+        }
+
+        function hideError(elementId) {
+            document.getElementById(elementId).classList.remove('show');
+        }
+
+        function showLoading(resultsId, loadingId) {
+            document.getElementById(resultsId).classList.add('show');
+            document.getElementById(loadingId).style.display = 'block';
+        }
+
+        function hideLoading(resultsId, loadingId) {
+            document.getElementById(loadingId).style.display = 'none';
+        }
+
+        function disableButton(buttonId) {
+            document.getElementById(buttonId).disabled = true;
+        }
+
+        function enableButton(buttonId) {
+            document.getElementById(buttonId).disabled = false;
+        }
+
+        // Initialize
+        checkOllamaStatus();
+        setInterval(checkOllamaStatus, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html>
